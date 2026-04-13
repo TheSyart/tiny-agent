@@ -112,6 +112,7 @@ class AgentLoopConfig:
     max_retries: int = 3
     retry_delay: float = 1.0
     max_budget_tokens: Optional[int] = None
+    max_tool_concurrency: int = 10
 
     def validate(self) -> None:
         if self.max_loops < 1:
@@ -361,6 +362,7 @@ class Config:
                 max_retries=agent_data.get("max_retries", 3),
                 retry_delay=agent_data.get("retry_delay", 1.0),
                 max_budget_tokens=agent_data.get("max_budget_tokens"),
+                max_tool_concurrency=agent_data.get("max_tool_concurrency", 10),
             ),
             memory=MemoryConfig(
                 type=memory_data.get("type", "simple"),

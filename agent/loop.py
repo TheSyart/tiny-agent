@@ -34,6 +34,10 @@ from .exceptions import (
 )
 from .logger import AgentLogger, get_logger, LogContext
 from .hooks import HookRegistry, HookContext, HookEvent, HookResult
+from .context import ToolUseContext
+from .file_state import FileStateCache
+from .ptl import PTLHandler
+from .exceptions import PromptTooLongError
 
 
 class AgentState(Enum):
@@ -60,6 +64,16 @@ class AgentConfig:
 
     # Token budget (optional)
     max_budget_tokens: Optional[int] = None
+
+    # Max concurrent tool executions within a single batch
+    max_tool_concurrency: int = 10
+
+
+@dataclass
+class ToolBatch:
+    """A batch of tool calls that share the same concurrency mode."""
+    is_concurrent: bool
+    tool_uses: list  # list[ToolUseBlock]
 
 
 @dataclass
@@ -196,6 +210,15 @@ class AgentLoop:
         self._metrics.start_time = asyncio.get_event_loop().time()
         self._interrupted.clear()
 
+        # Create a ToolUseContext for this run — tools receive this for
+        # cooperative cancellation, file-state tracking, etc.
+        tool_context = ToolUseContext(
+            abort_event=self._interrupted,
+            read_file_state=FileStateCache(),
+            session_id=self.session_id,
+            agent_id=self.agent_id,
+        )
+
         user_message = Message(role="user", content=user_input)
         # Persist the user message up front so partial progress is not lost
         # if the loop raises mid-flight. Both run() and run_stream() used to
@@ -277,8 +300,9 @@ class AgentLoop:
                 self.logger.info(f"Executing {len(response.tool_uses)} tool(s)")
                 self._metrics.tool_calls += len(response.tool_uses)
 
+                tool_context.loop_count = loop_count
                 tool_results = await self._execute_tools(
-                    response.tool_uses, loop_count
+                    response.tool_uses, loop_count, tool_context
                 )
 
                 # Annotate error results with recovery hints so the LLM can
@@ -398,7 +422,7 @@ class AgentLoop:
             raise
 
     async def _call_llm(self, messages: list, retry_count: int = 0) -> LLMResponse:
-        """Call LLM with retry logic"""
+        """Call LLM with retry logic and PTL (Prompt Too Long) recovery."""
         await self._trigger_hook(HookEvent.PRE_LLM_REQUEST, {
             "messages_count": len(messages),
             "tools_count": len(self.tools.get_schemas())
@@ -423,6 +447,18 @@ class AgentLoop:
 
             return response
 
+        except PromptTooLongError:
+            # PTL recovery: truncate oldest messages and retry.
+            truncated = PTLHandler.truncate_for_retry(messages)
+            if truncated is not None:
+                n_dropped = len(messages) - len(truncated)
+                self.logger.warning(
+                    f"Prompt too long — truncated {n_dropped} messages, retrying"
+                )
+                return await self._call_llm(truncated, retry_count)
+            # Nothing left to drop — propagate the error.
+            raise
+
         except LLMError as e:
             if retry_count < self.config.max_retries:
                 self.logger.warning(f"LLM error, retrying ({retry_count + 1}/{self.config.max_retries})")
@@ -430,53 +466,70 @@ class AgentLoop:
                 return await self._call_llm(messages, retry_count + 1)
             raise
 
+    def _partition_tool_calls(
+        self, tool_uses: list[ToolUseBlock]
+    ) -> list[ToolBatch]:
+        """Partition tool calls into batches based on concurrency safety.
+
+        Consecutive concurrency-safe tools are merged into a single batch
+        that will execute in parallel.  Non-safe tools get their own serial
+        batch.  This mirrors Claude Code's ``partitionToolCalls`` algorithm
+        and is more precise than the previous blanket IO/CPU split.
+        """
+        batches: list[ToolBatch] = []
+        for tu in tool_uses:
+            is_safe = self.tools.is_concurrency_safe(tu.name, tu.input)
+            if batches and batches[-1].is_concurrent and is_safe:
+                batches[-1].tool_uses.append(tu)
+            else:
+                batches.append(ToolBatch(is_concurrent=is_safe, tool_uses=[tu]))
+        return batches
+
     async def _execute_tools(
         self,
         tool_uses: list[ToolUseBlock],
-        loop_count: int
+        loop_count: int,
+        context: ToolUseContext,
     ) -> list[ToolResult]:
-        """Execute tool calls with safety checks and hooks"""
-        results = []
+        """Execute tool calls using batch partitioning with concurrency control.
 
-        # Separate IO-intensive and CPU-intensive for parallel execution
-        io_tools = []
-        cpu_tools = []
+        Concurrency-safe batches run in parallel (bounded by a semaphore);
+        non-safe batches run sequentially.
+        """
+        results: list[ToolResult] = []
+        sem = asyncio.Semaphore(self.config.max_tool_concurrency)
 
-        for tu in tool_uses:
-            if self.tools.is_io_intensive(tu.name):
-                io_tools.append(tu)
+        for batch in self._partition_tool_calls(tool_uses):
+            if batch.is_concurrent and len(batch.tool_uses) > 1:
+                async def _run(tu: ToolUseBlock) -> ToolResult:
+                    async with sem:
+                        return await self._execute_single_tool(tu, loop_count, context)
+
+                batch_results = await asyncio.gather(
+                    *[_run(tu) for tu in batch.tool_uses],
+                    return_exceptions=True,
+                )
+                for tu, result in zip(batch.tool_uses, batch_results):
+                    if isinstance(result, Exception):
+                        results.append(ToolResult(
+                            tool_use_id=tu.id,
+                            content=str(result),
+                            is_error=True,
+                        ))
+                    else:
+                        results.append(result)
             else:
-                cpu_tools.append(tu)
-
-        # Execute IO-intensive tools in parallel
-        if io_tools:
-            io_tasks = [
-                self._execute_single_tool(tu, loop_count)
-                for tu in io_tools
-            ]
-            io_results = await asyncio.gather(*io_tasks, return_exceptions=True)
-
-            for tu, result in zip(io_tools, io_results):
-                if isinstance(result, Exception):
-                    results.append(ToolResult(
-                        tool_use_id=tu.id,
-                        content=str(result),
-                        is_error=True
-                    ))
-                else:
+                for tu in batch.tool_uses:
+                    result = await self._execute_single_tool(tu, loop_count, context)
                     results.append(result)
-
-        # Execute CPU-intensive tools sequentially
-        for tu in cpu_tools:
-            result = await self._execute_single_tool(tu, loop_count)
-            results.append(result)
 
         return results
 
     async def _execute_single_tool(
         self,
         tool_use: ToolUseBlock,
-        loop_count: int
+        loop_count: int,
+        context: Optional[ToolUseContext] = None,
     ) -> ToolResult:
         """Execute a single tool with full lifecycle management"""
         import time
@@ -534,7 +587,7 @@ class AgentLoop:
         # Execute tool
         start_time = time.time()
         try:
-            output = await self.tools.execute(tool_use.name, tool_use.input)
+            output = await self.tools.execute(tool_use.name, tool_use.input, context=context)
             duration_ms = (time.time() - start_time) * 1000
 
             self.logger.tool_result(tool_use.name, True, duration_ms)

@@ -5,7 +5,7 @@ from typing import Optional
 from .base import tool
 
 
-@tool
+@tool(is_concurrency_safe=True)
 async def file_read(path: str) -> str:
     """
     Read the contents of a file

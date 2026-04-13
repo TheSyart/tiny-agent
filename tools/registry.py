@@ -84,12 +84,25 @@ class ToolRegistry:
         tool = self._tools.get(name)
         return tool.is_dangerous if tool else False
 
-    async def execute(self, name: str, input: dict) -> Any:
+    def is_concurrency_safe(self, name: str, input: dict = None) -> bool:
+        """Check if a tool is safe for concurrent execution given *input*."""
+        tool = self._tools.get(name)
+        if tool is None:
+            return False
+        return tool.get_concurrency_safe(input)
+
+    async def execute(self, name: str, input: dict, context=None) -> Any:
         """Execute a tool by name with given input.
 
         Validates ``input`` against the tool's JSON schema before calling. If
         validation fails, returns a descriptive error string (instead of
         crashing) so the LLM can self-correct.
+
+        Args:
+            name: Tool name.
+            input: Tool input parameters.
+            context: Optional :class:`~agent.context.ToolUseContext` passed
+                through to the tool handler if it accepts one.
         """
         tool = self._tools.get(name)
         if not tool:
@@ -99,7 +112,7 @@ class ToolRegistry:
         if errors:
             return f"Input validation error: {'; '.join(errors)}"
 
-        return await tool.execute(**input)
+        return await tool.execute(context=context, **input)
 
     def list_tools(self) -> List[str]:
         """List all registered tool names"""

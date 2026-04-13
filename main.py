@@ -36,7 +36,7 @@ from tools.knowledge_skill_tool import KnowledgeSkillRegistry, make_knowledge_sk
 from memory.manager import MemoryManager
 from memory.compressor import MemoryCompressor
 from safety.manager import SafetyManager, SafetyConfig, SafetyMode
-from prompts import get_tiny_config
+from prompts import get_tiny_config, SystemPromptBuilder
 
 import logging
 
@@ -54,8 +54,12 @@ def get_default_system_prompt() -> str:
 
 def create_agent(config: Config, hooks: Optional[HookRegistry] = None) -> AgentLoop:
     """Create an agent instance with configuration"""
-    # Load system prompt
-    system_prompt = config.agent.system_prompt or get_default_system_prompt()
+    # Build system prompt using SystemPromptBuilder.
+    # Static sections are stable across turns (cacheable by Anthropic API).
+    # Dynamic sections change per session (skills, memory, etc.).
+    prompt_builder = SystemPromptBuilder()
+    base_prompt = config.agent.system_prompt or get_default_system_prompt()
+    prompt_builder.add_static(base_prompt)
 
     # Create LLM client
     llm = LLMClient(
@@ -116,13 +120,15 @@ def create_agent(config: Config, hooks: Optional[HookRegistry] = None) -> AgentL
         dangerous_tools=config.safety.sandbox.dangerous_tools,
     ))
 
-    # Create agent
+    # Create agent config — system prompt is built from the builder below
+    # (after skills are registered and can contribute dynamic sections).
     agent_config = AgentConfig(
         max_loops=config.agent.max_loops,
         max_tokens=config.agent.max_tokens,
-        system_prompt=system_prompt,
+        system_prompt=base_prompt,  # placeholder — overwritten after skills
         verbose=config.agent.verbose,
         stream=config.agent.stream,
+        max_tool_concurrency=config.agent.max_tool_concurrency,
     )
 
     agent = AgentLoop(
@@ -146,10 +152,17 @@ def create_agent(config: Config, hooks: Optional[HookRegistry] = None) -> AgentL
     for t in make_knowledge_skill_tools(knowledge_registry):
         tools.register(t)
 
-    # Append available skill descriptions to system prompt
+    # Append available skill descriptions as a dynamic section
     skill_descriptions = knowledge_registry.describe_available()
     if skill_descriptions:
-        agent.config.system_prompt = agent.config.system_prompt.rstrip() + "\n\n" + skill_descriptions
+        prompt_builder.add_dynamic(skill_descriptions)
+
+    # Finalize system prompt from the builder
+    agent.config.system_prompt = prompt_builder.build()
+
+    # Store builder on agent so callers (e.g. WebUI) can rebuild with
+    # additional dynamic sections (memory context, datetime, etc.)
+    agent._prompt_builder = prompt_builder  # type: ignore[attr-defined]
 
     # Expose registry on agent for later reloads (e.g. after creating a new SKILL.md)
     agent._knowledge_registry = knowledge_registry  # type: ignore[attr-defined]

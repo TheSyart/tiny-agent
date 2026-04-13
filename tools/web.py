@@ -6,7 +6,7 @@ from typing import Optional
 from .base import tool
 
 
-@tool(is_io_intensive=True)
+@tool(is_concurrency_safe=True)
 async def web_search(query: str, max_results: int = 5) -> str:
     """
     Search the web for information using DuckDuckGo.
@@ -47,7 +47,7 @@ async def web_search(query: str, max_results: int = 5) -> str:
         return f"Search error: {str(e)}"
 
 
-@tool(is_io_intensive=True)
+@tool(is_concurrency_safe=True)
 async def web_fetch(url: str, selector: Optional[str] = None) -> str:
     """
     Fetch and extract content from a web page

@@ -29,6 +29,7 @@ class Tool:
         handler: Callable,
         is_io_intensive: bool = False,
         is_dangerous: bool = False,
+        is_concurrency_safe: Union[bool, Callable[[dict], bool], None] = None,
     ):
         """
         Initialize a tool
@@ -38,8 +39,13 @@ class Tool:
             description: Tool description (helps LLM understand when to use it)
             input_schema: JSON Schema for input parameters
             handler: The actual function to execute
-            is_io_intensive: Whether this tool does IO (will be executed in parallel)
+            is_io_intensive: Whether this tool does IO (kept for backward compat,
+                maps to is_concurrency_safe)
             is_dangerous: Whether this tool can cause harm (needs confirmation)
+            is_concurrency_safe: Whether this tool can run concurrently with
+                other concurrency-safe tools.  Accepts a bool or a callable
+                that receives the tool input dict and returns bool.  If None,
+                falls back to ``is_io_intensive``.
         """
         self.name = name
         self.description = description
@@ -48,8 +54,35 @@ class Tool:
         self.is_io_intensive = is_io_intensive
         self.is_dangerous = is_dangerous
 
-    async def execute(self, **kwargs) -> Any:
-        """Execute the tool with given arguments"""
+        # Concurrency safety: prefer explicit flag, fall back to is_io_intensive
+        if is_concurrency_safe is not None:
+            self._concurrency_safe = is_concurrency_safe
+        else:
+            self._concurrency_safe = is_io_intensive
+
+        # Pre-detect whether handler accepts a 'context' parameter so we can
+        # inject ToolUseContext without breaking existing tools.
+        try:
+            sig = inspect.signature(handler)
+            self._accepts_context = "context" in sig.parameters
+        except (ValueError, TypeError):
+            self._accepts_context = False
+
+    def get_concurrency_safe(self, input: Optional[dict] = None) -> bool:
+        """Return whether this tool can run concurrently given *input*."""
+        if callable(self._concurrency_safe):
+            return bool(self._concurrency_safe(input or {}))
+        return bool(self._concurrency_safe)
+
+    async def execute(self, context=None, **kwargs) -> Any:
+        """Execute the tool with given arguments.
+
+        If the handler function declares a ``context`` parameter, the
+        :class:`~agent.context.ToolUseContext` is injected automatically.
+        Existing handlers without that parameter are unaffected.
+        """
+        if self._accepts_context and context is not None:
+            kwargs["context"] = context
         if inspect.iscoroutinefunction(self.handler):
             return await self.handler(**kwargs)
         return self.handler(**kwargs)
@@ -68,6 +101,7 @@ def tool(
     description: Optional[str] = None,
     is_io_intensive: bool = False,
     is_dangerous: bool = False,
+    is_concurrency_safe: Union[bool, Callable[[dict], bool], None] = None,
 ):
     """
     Decorator to create a tool from a function
@@ -78,14 +112,16 @@ def tool(
         @tool
         async def my_tool(...): ...
 
-        @tool(is_io_intensive=True)
+        @tool(is_concurrency_safe=True)
         async def my_tool(...): ...
 
     Args:
         name: Override tool name (defaults to function name)
         description: Override description (defaults to docstring)
-        is_io_intensive: Mark as IO-intensive for parallel execution
+        is_io_intensive: Mark as IO-intensive (deprecated, use is_concurrency_safe)
         is_dangerous: Mark as dangerous (requires user confirmation)
+        is_concurrency_safe: Whether this tool can run concurrently with
+            other concurrency-safe tools.  Falls back to is_io_intensive.
     """
     def decorator(func: Callable) -> Tool:
         # Get tool name
@@ -104,6 +140,7 @@ def tool(
             handler=func,
             is_io_intensive=is_io_intensive,
             is_dangerous=is_dangerous,
+            is_concurrency_safe=is_concurrency_safe,
         )
 
     # Handle @tool without parentheses (name is actually the function)

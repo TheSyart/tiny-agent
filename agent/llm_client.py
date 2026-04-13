@@ -18,6 +18,7 @@ from .exceptions import (
     LLMError,
     LLMRateLimitError,
     LLMResponseError,
+    PromptTooLongError,
 )
 from .types import (
     ContentBlock,
@@ -48,6 +49,13 @@ def _map_anthropic_error(err: Exception) -> LLMError:
     if isinstance(err, anthropic.APIConnectionError):
         return LLMConnectionError(str(err))
     if isinstance(err, anthropic.APIStatusError):
+        # Detect prompt-too-long (HTTP 400 with specific message)
+        msg_lower = str(err).lower()
+        if any(p in msg_lower for p in (
+            "prompt is too long", "maximum context length",
+            "too many tokens", "exceeds the maximum",
+        )):
+            return PromptTooLongError(str(err))
         return LLMResponseError(str(err))
     if isinstance(err, anthropic.APIError):
         return LLMError(str(err))
@@ -85,10 +93,15 @@ class LLMClient:
         self,
         messages: list[dict],
         tools: Optional[list[dict]],
-        system: Optional[str],
+        system: Optional[Any],
         max_tokens: Optional[int],
         extra: dict[str, Any],
     ) -> dict[str, Any]:
+        """Build API request parameters.
+
+        ``system`` can be a plain string or a ``list[dict]`` of cache-control
+        blocks produced by :meth:`SystemPromptBuilder.build_cached`.
+        """
         params: dict[str, Any] = {
             "model": self.model,
             "max_tokens": max_tokens or self.max_tokens,

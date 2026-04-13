@@ -14,7 +14,7 @@ from typing import Optional
 from .base import tool
 
 
-@tool
+@tool(is_concurrency_safe=True)
 async def grep(
     pattern: str,
     path: str = ".",
@@ -96,7 +96,7 @@ async def grep(
     return "\n".join(matches)
 
 
-@tool
+@tool(is_concurrency_safe=True)
 async def glob_files(
     pattern: str,
     path: str = ".",

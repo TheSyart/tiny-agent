@@ -50,6 +50,11 @@ class LLMResponseError(LLMError):
     pass
 
 
+class PromptTooLongError(LLMError):
+    """Prompt exceeds the model's context window"""
+    pass
+
+
 # Tool Errors
 class ToolError(TinyAgentError):
     """Base tool error"""
