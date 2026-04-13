@@ -1,0 +1,191 @@
+/* ==========================================================================
+   Tiny-Agent · Warm Dark theme · Claude-inspired minimal palette
+   简约大气舒适：近黑暖底 + 赤陶橙点缀，接近 Claude 官网设计语言
+   ========================================================================== */
+
+:root {
+  /* Background layers — warm near-black */
+  --bg-0:     #0F0F0F;   /* main bg */
+  --bg-1:     #161616;   /* sidebar / nav */
+  --bg-2:     #1C1C1C;   /* cards / inputs */
+  --bg-3:     #222222;   /* elevated surface */
+  --bg-glass:   rgba(22, 22, 22, 0.82);
+  --bg-glass-2: rgba(28, 28, 28, 0.88);
+
+  /* Accent — Claude warm coral/terra-cotta */
+  --c-accent:      #CC785C;   /* primary accent */
+  --c-accent-soft: rgba(204, 120, 92, 0.14);
+  --c-accent-dim:  rgba(204, 120, 92, 0.08);
+
+  /* Legacy aliases — keep old CSS references working */
+  --c-teal:     #CC785C;
+  --c-cyan:     #CC785C;
+  --c-cyan-2:   #CC785C;
+  --c-lavender: #CC785C;
+  --c-purple:   #CC785C;
+  --c-purple-2: #CC785C;
+  --c-coral:    #CC785C;
+  --c-pink:     #CC785C;
+  --c-orange:   #CC785C;
+  --c-sky:      #8AB4CE;
+  --c-mint:     #6AAF8A;
+  --c-amber:    #D4A04E;
+
+  /* Status */
+  --c-ok:   #6AAF8A;
+  --c-warn: #D4A04E;
+  --c-err:  #C0635A;
+
+  /* Gradients — minimal, single-tone */
+  --grad-primary: linear-gradient(135deg, #CC785C 0%, #D4A04E 100%);
+  --grad-cool:    linear-gradient(135deg, #8AB4CE 0%, #7E9CBD 100%);
+  --grad-warm:    linear-gradient(135deg, #CC785C 0%, #D4A04E 100%);
+  --grad-mint:    linear-gradient(135deg, #6AAF8A 0%, #5A9F7A 100%);
+  --grad-subtle:  rgba(204, 120, 92, 0.06);
+
+  /* Borders — very subtle */
+  --border-0: rgba(255, 255, 255, 0.04);
+  --border-1: rgba(255, 255, 255, 0.07);
+  --border-2: rgba(255, 255, 255, 0.12);
+  --border-neon: rgba(204, 120, 92, 0.22);
+
+  /* Text — warm whites */
+  --text-0:    #F0EBE3;   /* warm off-white */
+  --text-1:    #C8BFB5;   /* secondary */
+  --text-mute: #7A726B;   /* muted */
+  --text-dim:  #4A4540;   /* dim */
+
+  /* Shadows — no glows, just depth */
+  --glow-teal:    0 2px 8px rgba(0,0,0,0.4);
+  --glow-lavender:0 2px 8px rgba(0,0,0,0.4);
+  --glow-coral:   0 2px 8px rgba(0,0,0,0.4);
+  --glow-soft:    0 4px 16px rgba(0,0,0,0.35);
+  --glow-cyan:    0 2px 8px rgba(0,0,0,0.4);
+  --glow-purple:  0 2px 8px rgba(0,0,0,0.4);
+  --glow-pink:    0 2px 8px rgba(0,0,0,0.4);
+
+  /* Radii & motion */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 16px;
+  --r-xl: 22px;
+  --dur:  200ms;
+  --dur-fast: 130ms;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-0);
+  background: var(--bg-0);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  position: relative;
+}
+
+code, pre, .mono {
+  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
+}
+
+button { font: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+
+:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: rgba(204, 120, 92, 0.22);
+  color: var(--text-0);
+}
+
+/* ---------- Subtle background gradient (no animation blobs) ---------- */
+.aurora {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+.aurora .blob { display: none; } /* Remove distracting aurora blobs */
+
+/* ---------- Shared utilities ---------- */
+.gradient-text {
+  color: var(--c-accent);
+}
+
+/* ---------- Scrollbar — very minimal ---------- */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.10);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.18);
+}
+
+/* ---------- Animations ---------- */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-4px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes pulse {
+  0%,100% { opacity: 1; }
+  50%     { opacity: 0.5; }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes shimmer {
+  0%,100% { background-position: 0% 50%; }
+  50%     { background-position: 100% 50%; }
+}
+@keyframes shimmerSweep {
+  to { transform: translateX(100%); }
+}
+
+/* ---------- Toast ---------- */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translate(-50%, 12px);
+  padding: 10px 18px;
+  border-radius: var(--r-md);
+  background: var(--bg-3);
+  border: 1px solid var(--border-2);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  color: var(--text-0);
+  font-size: 13px;
+  font-weight: 500;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 200;
+  transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease);
+}
+.toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+.toast.err {
+  border-color: rgba(192, 99, 90, 0.4);
+  color: #E8968E;
+}

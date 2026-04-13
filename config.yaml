@@ -1,0 +1,80 @@
+# Tiny-Agent Configuration
+
+# LLM Settings
+llm:
+  base_url: "${ANTHROPIC_BASE_URL}"
+  api_key: "${ANTHROPIC_API_KEY}"
+  model: "${MODEL_ID}"
+  max_tokens: 4096
+  temperature: 1.0
+
+# Agent Settings
+agent:
+  max_loops: 50
+  # system_prompt: ""  # Leave empty to use prompts/tiny.md as default
+  verbose: false
+
+# Memory Settings
+memory:
+  type: "simple"  # simple or vector
+  max_messages: 100
+  storage_path: "./data/memory"
+
+  # LLM-based compression of old messages when context fills up
+  compression:
+    enabled: true
+    trigger_ratio: 0.70     # compress when estimated tokens >= max_tokens * ratio
+    trigger_threshold: 60   # fallback: compress at this many messages
+    keep_recent: 20         # preserve the newest N messages verbatim
+    target_summary_tokens: 500
+
+  # Persistent JSON archive of past sessions, searchable via memory_recall tool
+  archive:
+    enabled: true
+    auto_archive_on_clear: true
+
+# Safety Settings
+safety:
+  mode: "confirm"  # sandbox, confirm, or trust
+
+  sandbox:
+    allowed_dirs:
+      - "~/workspace"
+      - "~/Documents"
+    blocked_commands:
+      - "rm -rf"
+      - "sudo"
+      - "mkfs"
+      - "dd if="
+
+  confirm:
+    dangerous_tools:
+      - shell_exec
+      - file_write
+      - file_edit
+
+# Model Pricing (USD per 1M tokens, for usage stats panel)
+# pricing:
+#   "claude-sonnet-4-6": {input: 3.0, output: 15.0}
+#   "MiniMax-M1":        {input: 0.0, output: 0.0}
+#   default:             {input: 3.0, output: 15.0}
+
+# Web UI Settings
+webui:
+  host: "127.0.0.1"
+  port: 8000
+  debug: false
+
+# Skills (plugin system)
+skills:
+  auto_discover: true
+  directories:
+    - "./skills/builtin"   # Built-in skills shipped with tiny-agent
+    - "./skills/custom"    # User-created skills (use the Skills UI to add)
+
+# MCP Servers (optional)
+# mcp:
+#   servers:
+#     filesystem:
+#       command: "mcp-filesystem"
+#       args: ["--root", "~/workspace"]

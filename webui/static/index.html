@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tiny-Agent</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11/styles/github-dark.min.css">
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11/highlight.min.js"></script>
+
+<link rel="stylesheet" href="/static/css/base.css">
+<link rel="stylesheet" href="/static/css/layout.css">
+<link rel="stylesheet" href="/static/css/chat.css">
+<link rel="stylesheet" href="/static/css/panels.css">
+</head>
+<body>
+
+<div class="aurora" aria-hidden="true">
+  <span class="blob b1"></span>
+  <span class="blob b2"></span>
+</div>
+
+<div class="app">
+
+  <!-- ============ Left Navigation ============ -->
+  <nav class="left-nav" aria-label="Main navigation">
+    <div class="nav-brand">
+      <div class="nav-brand-icon">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <span class="nav-brand-name">小T</span>
+    </div>
+
+    <div class="nav-items">
+      <button class="nav-item active" data-page="chat" title="对话" type="button" aria-label="Chat">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>对话</span>
+      </button>
+      <button class="nav-item" data-page="prompt" title="人格设定" type="button" aria-label="Prompt">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        <span>人格</span>
+      </button>
+      <button class="nav-item" data-page="model" title="模型配置" type="button" aria-label="Model">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>
+        <span>模型</span>
+      </button>
+      <button class="nav-item" data-page="tools" title="工具列表" type="button" aria-label="Tools">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        <span>工具</span>
+      </button>
+      <button class="nav-item" data-page="mcp" title="MCP 服务" type="button" aria-label="MCP">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><circle cx="5" cy="19" r="3"/><circle cx="19" cy="19" r="3"/><path d="M12 8v5"/><path d="M8.5 17.5L12 13"/><path d="M15.5 17.5L12 13"/></svg>
+        <span>MCP</span>
+      </button>
+      <button class="nav-item" data-page="skills" title="技能插件" type="button" aria-label="Skills">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13.5V20a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-4h6v4a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-6.5"/><path d="M11 21v-5.5a.5.5 0 0 0-.5-.5h-1A.5.5 0 0 0 9 16v5"/><path d="M22 8h-3V3a1 1 0 0 0-1-1H6a1 1 0 0 0-1 1v5H2l10 9 10-9z"/></svg>
+        <span>技能</span>
+      </button>
+      <button class="nav-item" data-page="memory" title="记忆管理" type="button" aria-label="Memory">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2z"/>
+          <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2z"/>
+        </svg>
+        <span>记忆</span>
+      </button>
+      <button class="nav-item" data-page="stats" title="使用统计" type="button" aria-label="Stats">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        <span>统计</span>
+      </button>
+    </div>
+
+    <div class="nav-bottom">
+      <div class="nav-conn">
+        <span class="status-dot" id="conn-dot" aria-label="Connection status"></span>
+        <span style="font-size:11px;color:var(--text-dim)">连接</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ============ Pages ============ -->
+  <div class="pages">
+
+    <!-- PAGE: Chat -->
+    <section class="page active" id="page-chat">
+      <header class="topbar">
+        <div class="topbar-title">
+          <span class="gradient-text">Conversation</span>
+        </div>
+        <div class="topbar-meta">
+          <span class="pill accent" id="safety-pill">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span>—</span>
+          </span>
+          <span class="pill" id="model-pill">—</span>
+          <button class="icon-btn" id="clear-btn" type="button" aria-label="Clear chat" title="清空对话">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="chat" id="chat">
+        <div class="chat-inner" id="chat-inner">
+          <section class="welcome" id="welcome">
+            <div class="welcome-halo" aria-hidden="true"></div>
+            <h1>你好，<span class="gradient-text">小T</span> 在线</h1>
+            <p>调用工具、联网浏览、读写文件、执行命令 — 全程流式 + 安全确认 + 长期记忆检索。</p>
+            <div class="suggestions">
+              <button class="suggestion" type="button" data-prompt="List the files in the current directory and summarize the project structure.">
+                <span class="suggestion-title">探索项目</span>
+                列出当前目录文件并总结项目结构
+              </button>
+              <button class="suggestion" type="button" data-prompt="Show me the current git status of this repo.">
+                <span class="suggestion-title">运行命令</span>
+                查看当前 git status
+              </button>
+              <button class="suggestion" type="button" data-prompt="Use memory_recall to find what we discussed last time.">
+                <span class="suggestion-title">检索记忆</span>
+                从归档中找到上次对话的内容
+              </button>
+              <button class="suggestion" type="button" data-prompt="你是谁？有哪些能力？">
+                <span class="suggestion-title">了解小T</span>
+                你是谁？有哪些工具和能力？
+              </button>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <div class="composer-wrap">
+        <div class="composer">
+          <textarea id="input" rows="1" placeholder="给小T发消息…" aria-label="Message"></textarea>
+          <button class="send-btn" id="send" type="button" aria-label="Send message" disabled>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 2L11 13"/>
+              <path d="M22 2L15 22L11 13L2 9L22 2Z"/>
+            </svg>
+          </button>
+        </div>
+        <div class="composer-hint">
+          <span class="kbd">Enter</span> 发送 · <span class="kbd">Shift+Enter</span> 换行
+        </div>
+      </div>
+    </section>
+
+    <!-- PAGE: Prompt Editor -->
+    <section class="page" id="page-prompt">
+      <div class="page-header">
+        <h2 class="page-title gradient-text">人格设定</h2>
+        <p class="page-desc">编辑 <code>prompts/tiny.md</code> — 保存后立即生效，无需重启</p>
+      </div>
+      <div class="page-body">
+        <div class="prompt-editor-wrap">
+          <textarea id="prompt-editor" class="prompt-textarea" spellcheck="false" placeholder="加载中…"></textarea>
+          <div class="prompt-actions">
+            <button class="btn btn-primary" id="prompt-save" type="button">保存并生效</button>
+            <button class="btn btn-secondary" id="prompt-reload" type="button">重新加载</button>
+            <span class="prompt-status" id="prompt-status"></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAGE: Model Config -->
+    <section class="page" id="page-model">
+      <div class="page-header">
+        <h2 class="page-title gradient-text">模型配置</h2>
+        <p class="page-desc">运行时修改立即生效，不写回 config.yaml</p>
+      </div>
+      <div class="page-body">
+        <div class="info-cards">
+          <div class="info-card">
+            <div class="info-card-title">只读信息</div>
+            <div class="cfg-readonly">
+              <div><span>base_url</span><code id="cfg-base-url">—</code></div>
+              <div><span>model</span><code id="cfg-model">—</code></div>
+              <div><span>api_key</span><code id="cfg-api-key">—</code></div>
+            </div>
+          </div>
+          <div class="info-card">
+            <div class="info-card-title">运行时参数</div>
+            <div class="cfg-form">
+              <label>
+                <span>temperature</span>
+                <input type="number" id="cfg-temperature" step="0.05" min="0" max="2">
+              </label>
+              <label>
+                <span>max_tokens</span>
+                <input type="number" id="cfg-max-tokens" step="128" min="128" max="32768">
+              </label>
+              <label>
+                <span>max_loops</span>
+                <input type="number" id="cfg-max-loops" step="1" min="1" max="200">
+              </label>
+              <label>
+                <span>verbose</span>
+                <select id="cfg-verbose">
+                  <option value="false">false</option>
+                  <option value="true">true</option>
+                </select>
+              </label>
+              <label>
+                <span>safety.mode</span>
+                <select id="cfg-safety-mode">
+                  <option value="confirm">confirm</option>
+                  <option value="sandbox">sandbox</option>
+                  <option value="trust">trust</option>
+                </select>
+              </label>
+            </div>
+            <div class="cfg-footer">
+              <button class="btn btn-primary" id="config-save" type="button">Apply</button>
+              <span class="cfg-hint">仅修改内存中的运行时配置</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAGE: Tools -->
+    <section class="page" id="page-tools">
+      <div class="page-header">
+        <h2 class="page-title gradient-text">工具列表</h2>
+        <p class="page-desc">当前 Agent 实例注册的所有工具</p>
+      </div>
+      <div class="page-body">
+        <div class="info-cards" id="page-tools-list">
+          <div class="mem-empty">加载中…</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAGE: MCP -->
+    <section class="page" id="page-mcp">
+      <div class="page-header">
+        <h2 class="page-title gradient-text">MCP 服务</h2>
+        <p class="page-desc">Model Context Protocol 外部工具服务器 — 动态管理，持久化到 config.yaml</p>
+      </div>
+      <div class="page-body">
+        <div class="info-cards">
+          <div class="info-card">
+            <div class="info-card-title" style="display:flex;align-items:center;justify-content:space-between">
+              <span>已配置服务器</span>
+              <button class="btn btn-secondary" id="mcp-add-toggle" type="button" style="padding:4px 12px;font-size:12px">+ 添加</button>
+            </div>
+            <div id="mcp-server-list"><div class="mem-empty">加载中…</div></div>
+          </div>
+
+          <div class="info-card" id="mcp-add-form-card" style="display:none">
+            <div class="info-card-title">添加 MCP 服务器</div>
+            <div class="cfg-form">
+              <label>
+                <span>名称 (name)</span>
+                <input type="text" id="mcp-form-name" placeholder="e.g. filesystem">
+              </label>
+              <label>
+                <span>命令 (command)</span>
+                <input type="text" id="mcp-form-command" placeholder="e.g. mcp-filesystem">
+              </label>
+              <label>
+                <span>参数 (args，逗号分隔)</span>
+                <input type="text" id="mcp-form-args" placeholder="e.g. --root, ~/workspace">
+              </label>
+              <label>
+                <span>环境变量 (env，每行 KEY=VALUE)</span>
+                <textarea id="mcp-form-env" rows="3" style="resize:vertical" placeholder="API_KEY=xxx&#10;DEBUG=1"></textarea>
+              </label>
+            </div>
+            <div class="cfg-footer">
+              <button class="btn btn-primary" id="mcp-form-submit" type="button">添加服务器</button>
+              <button class="btn btn-secondary" id="mcp-form-cancel" type="button">取消</button>
+              <span class="cfg-hint" id="mcp-form-status"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAGE: Skills -->
+    <section class="page" id="page-skills">
+      <div class="page-header">
+        <h2 class="page-title gradient-text">技能插件</h2>
+        <p class="page-desc">从 skills.directories 自动加载的插件，可贡献工具给 Agent</p>
+      </div>
+      <div class="page-body">
+        <div class="info-cards">
+          <div class="info-card" id="skills-config-card">
+            <div class="info-card-title" style="display:flex;align-items:center;justify-content:space-between">
+              <span>已加载技能</span>
+              <button class="btn btn-secondary" id="skill-create-toggle" type="button" style="padding:4px 12px;font-size:12px">+ 新建技能</button>
+            </div>
+            <div class="cfg-readonly" style="margin-bottom:12px">
+              <div><span>auto_discover</span><code id="skills-auto-discover">—</code></div>
+              <div><span>directories</span><code id="skills-directories">—</code></div>
+            </div>
+            <div id="skills-list-container">
+              <div class="mem-empty" id="skills-empty">加载中…</div>
+            </div>
+          </div>
+
+          <div class="info-card" id="skill-create-card" style="display:none">
+            <div class="info-card-title">新建技能</div>
+            <!-- Type selector -->
+            <div style="display:flex;gap:12px;margin-bottom:14px">
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+                <input type="radio" name="skill-create-type" value="python" checked id="skill-type-python">
+                <span>Python 工具技能</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+                <input type="radio" name="skill-create-type" value="knowledge" id="skill-type-knowledge">
+                <span>知识技能 <span style="color:var(--text-dim);font-size:11px">(SKILL.md)</span></span>
+              </label>
+            </div>
+            <div class="cfg-form" style="margin-bottom:12px">
+              <label>
+                <span>技能标识符</span>
+                <input type="text" id="skill-create-name" placeholder="e.g. my_skill（字母开头）">
+              </label>
+              <label id="skill-desc-row" style="display:none">
+                <span>简短描述</span>
+                <input type="text" id="skill-create-desc" placeholder="一句话描述技能的功能">
+              </label>
+            </div>
+            <!-- Python code editor -->
+            <div id="skill-code-panel">
+              <div style="font-size:12px;color:var(--text-dim);margin-bottom:6px">技能代码（保存到 skills/custom/{name}/skill.py）</div>
+              <textarea id="skill-create-code" class="skill-code-editor" spellcheck="false" rows="18"></textarea>
+            </div>
+            <!-- Knowledge skill markdown editor -->
+            <div id="skill-knowledge-panel" style="display:none">
+              <div style="font-size:12px;color:var(--text-dim);margin-bottom:6px">技能内容（保存为 skills/custom/{name}/SKILL.md，支持 Markdown）</div>
+              <textarea id="skill-create-content" class="skill-code-editor" spellcheck="false" rows="18" placeholder="## 触发词&#10;用户说以下内容时加载本技能：&#10;- ...&#10;&#10;## 工作流程&#10;1. ...&#10;2. ...&#10;&#10;## 示例&#10;..."></textarea>
+            </div>
+            <div class="cfg-footer" style="margin-top:12px">
+              <button class="btn btn-primary" id="skill-create-submit" type="button">保存并热加载</button>
+              <button class="btn btn-secondary" id="skill-create-cancel" type="button">取消</button>
+              <span class="cfg-hint" id="skill-create-status"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAGE: Memory -->
+    <section class="page" id="page-memory">
+      <div class="page-header">
+        <h2 class="page-title gradient-text">记忆管理</h2>
+        <p class="page-desc">短期上下文 · 历史检索 · 重要记忆</p>
+      </div>
+      <div class="page-body page-memory-body">
+        <!-- Tabs -->
+        <nav class="page-tabs">
+          <button class="page-tab active" data-ptab="mem-short">短期记忆</button>
+          <button class="page-tab" data-ptab="mem-archive">归档检索</button>
+          <button class="page-tab" data-ptab="mem-important">重要记忆</button>
+        </nav>
+
+        <!-- Short-term -->
+        <div class="page-tab-panel active" id="ptab-mem-short">
+          <div class="mem-stats">
+            <div class="mem-stats-header">
+              <div class="mem-stats-metric">
+                <div class="mem-stats-label">当前上下文</div>
+                <div class="mem-stats-value">
+                  <span id="pg-st-count">0</span><span class="mem-stats-sub">/ <span id="pg-st-max">—</span> 条</span>
+                </div>
+              </div>
+              <div class="mem-stats-metric">
+                <div class="mem-stats-label">压缩阈值</div>
+                <div class="mem-stats-value">
+                  <span id="pg-st-trigger">—</span><span class="mem-stats-sub"> 条</span>
+                </div>
+              </div>
+              <div class="mem-stats-metric">
+                <div class="mem-stats-label">使用率</div>
+                <div class="mem-stats-value">
+                  <span id="pg-st-pct">0</span><span class="mem-stats-sub">%</span>
+                </div>
+              </div>
+            </div>
+            <div class="mem-bar">
+              <div class="mem-bar-fill" id="pg-st-bar"></div>
+              <div class="mem-bar-trigger" id="pg-st-marker"></div>
+            </div>
+            <div class="mem-stats-hint" id="pg-st-hint"></div>
+          </div>
+          <div class="mem-list-header">
+            <span class="mem-list-title">消息列表</span>
+            <div class="mem-list-actions">
+              <button class="btn-ghost btn-mini" id="pg-btn-compress" type="button">立即压缩</button>
+              <button class="btn-ghost btn-mini" id="pg-btn-archive" type="button">归档会话</button>
+            </div>
+          </div>
+          <div class="mem-list" id="pg-st-list"></div>
+        </div>
+
+        <!-- Archive search -->
+        <div class="page-tab-panel" id="ptab-mem-archive">
+          <div class="mem-search-wrap">
+            <input type="text" class="mem-search" id="pg-search-input" placeholder="搜索历史会话关键词…" />
+            <button class="btn-ghost" id="pg-search-btn" type="button">搜索</button>
+          </div>
+          <div class="mem-list" id="pg-archive-list">
+            <div class="mem-empty">加载中…</div>
+          </div>
+        </div>
+
+        <!-- Important memories (memory.md) -->
+        <div class="page-tab-panel" id="ptab-mem-important">
+          <div class="important-mem-wrap">
+            <div class="important-mem-hint">Agent 通过 <code>save_important_memory</code> 工具写入，每次对话自动注入到上下文。</div>
+            <div class="important-mem-content" id="pg-important-content">加载中…</div>
+            <div class="drawer-footer">
+              <button class="btn-ghost btn-danger" id="pg-btn-clear-important" type="button">🗑 清空记忆</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAGE: Stats -->
+    <section class="page" id="page-stats">
+      <div class="page-header">
+        <h2 class="page-title gradient-text">使用统计</h2>
+        <p class="page-desc">模型 Token 消耗与估算费用（跨会话累计）</p>
+      </div>
+      <div class="page-body">
+        <div class="stats-summary" id="stats-summary">
+          <div class="stat-card">
+            <div class="stat-val" id="stat-total-tokens">—</div>
+            <div class="stat-label">总 Tokens</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val" id="stat-cost">—</div>
+            <div class="stat-label">估算费用 (USD)</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val" id="stat-sessions">—</div>
+            <div class="stat-label">对话次数</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val" id="stat-tools">—</div>
+            <div class="stat-label">工具调用</div>
+          </div>
+        </div>
+
+        <div class="stats-chart-section">
+          <div class="stats-chart-title">近 14 天 Token 消耗</div>
+          <div class="stats-bar-chart" id="stats-bar-chart">
+            <div class="mem-empty">加载中…</div>
+          </div>
+        </div>
+
+        <div class="stats-bottom">
+          <div class="stats-section">
+            <div class="stats-section-title">模型分布</div>
+            <div id="stats-by-model" class="stats-list"></div>
+          </div>
+          <div class="stats-section">
+            <div class="stats-section-title">工具调用 Top 8</div>
+            <div id="stats-top-tools" class="stats-list"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div><!-- .pages -->
+</div><!-- .app -->
+
+<!-- ============ Confirmation Modal (kept as modal for inline flow) ============ -->
+<div class="modal-backdrop" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-icon warn" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </div>
+      <div>
+        <div class="modal-title" id="confirmTitle">Confirm tool execution</div>
+        <div class="modal-sub">此工具可能修改系统 — 请检查输入再允许</div>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="modal-tool" id="confirmTool">tool_name()</div>
+      <pre class="modal-input" id="confirmInput">{}</pre>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" type="button" id="confirm-deny">Deny</button>
+      <button class="btn btn-primary"   type="button" id="confirm-allow">Allow</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Toast ============ -->
+<div class="toast" id="toast"></div>
+
+<script src="/static/js/app.js"></script>
+<script src="/static/js/memory.js"></script>
+<script src="/static/js/config.js"></script>
+<script src="/static/js/mcp-skills.js"></script>
+<script src="/static/js/nav.js"></script>
+</body>
+</html>
